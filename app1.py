@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# app1.py
+# app2.py
 import pygame
 import random
 import time
@@ -21,10 +21,9 @@ ACCELERATION_ENABLED = True
 ACCELERATION = 2
 
 pygame.init()
-dis = pygame.display.set_mode((WIDTH, HEIGHT))
+display = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('SnakeGame')
 clock = pygame.time.Clock()
-
 font_style = pygame.font.SysFont('Monaco', 25, bold=True)
 score_font = pygame.font.SysFont('Monaco', 25, bold=True)
 speed_font = pygame.font.SysFont('Monaco', 25, bold=True)
@@ -44,16 +43,6 @@ class Snake:
 
     def get_head(self):
         return [self.x, self.y]
-
-    def set_head(self, x, y):
-        self.x = x
-        self.y = y
-        self.body.append([self.x, self.y])
-
-    def draw_snake(self):
-        for b in self.body[:-1]:
-            pygame.draw.rect(dis, SNAKE_COLOR, [b[0], b[1], self.size, self.size])
-        pygame.draw.rect(dis, HEAD_COLOR, [self.body[-1][0], self.body[-1][1], self.size, self.size])
 
     def set_direction(self, direction):
         # Validate direction
@@ -99,6 +88,9 @@ class Snake:
                 self.y = 0
             elif self.y < 0:
                 self.y = HEIGHT - self.size
+        self.body.append([self.x, self.y])
+        if len(self.body) > self.length:
+            del self.body[0]
         return True
 
 class Food:
@@ -113,59 +105,79 @@ class Food:
             food_y = round(random.randrange(0, HEIGHT - self.size) / self.size) * self.size
             if [food_x, food_y] not in snake.body:
                 return food_x, food_y
-def draw_message(text, color):
-    lines = text.split('\n')
-    y_offset = 0
-    for line in lines:
-        msg = font_style.render(line, True, color)
-        text_rect = msg.get_rect(center=(WIDTH / 2, HEIGHT / 3 + y_offset))
-        dis.blit(msg, text_rect)
-        y_offset += font_style.get_height()
 
-def draw_speed(speed):
-    txt = f'{speed:.2f}' if speed % 1 else str(int(speed))
-    value = speed_font.render(txt, True, SNAKE_COLOR)
-    text_rect = value.get_rect()
-    text_rect.topleft = (10, 10)
-    dis.blit(value, text_rect)
+class Game:
+    def __init__(self):
+        self.started = False
+        self.pause = False
+        self.over = False
+        self.quit = False
+        self.repeat = False
+        # Acceleration
+        self.acceleration = 0
+        # Timers
+        self.start_time = None
+        self.pause_time = 0
+        self.paused_sum = 0
 
-def draw_score(score):
-    value = score_font.render(str(score), True, FONT_COLOR)
-    text_rect = value.get_rect()
-    text_rect.topright = (WIDTH - 10, 10)
-    dis.blit(value, text_rect)
+    def snake_move(self, snake, foot):
+        x, y = snake.move()
 
-def draw_time(seconds):
-    if seconds < 0:
-        seconds = 0
-    minutes = seconds // 60
-    seconds = seconds % 60
-    time_str = f'{minutes}:{seconds:02d}'
-    value = time_font.render(time_str, True, FONT_COLOR)
-    text_rect = value.get_rect(center=(WIDTH // 2, 10))
-    dis.blit(value, text_rect)
+    def draw_snake(self, snake):
+        for b in snake.body[:-1]:
+            pygame.draw.rect(display, SNAKE_COLOR, [b[0], b[1], snake.size, snake.size])
+        pygame.draw.rect(display, HEAD_COLOR, [snake.body[-1][0], snake.body[-1][1], snake.size, snake.size])
 
-def draw_overlay(color, alpha):
-    overlay_width, overlay_height = WIDTH // 2, HEIGHT // 4
-    overlay_x, overlay_y = (WIDTH - overlay_width) // 2, (HEIGHT - overlay_height) // 2
-    overlay = pygame.Surface((overlay_width, overlay_height))
-    overlay.set_alpha(alpha)
-    overlay.fill(color)
-    dis.blit(overlay, (overlay_x, overlay_y))
+    def draw_food(self, food):
+        pygame.draw.rect(display, FOOD_COLOR, [food.x, food.y, food.size, food.size])
+
+    def draw_message(self, text, color):
+        lines = text.split('\n')
+        y_offset = 0
+        for line in lines:
+            msg = font_style.render(line, False, color)
+            text_rect = msg.get_rect(center=(WIDTH / 2, HEIGHT / 3 + y_offset))
+            display.blit(msg, text_rect)
+            y_offset += font_style.get_height()
+
+    def draw_speed(self, speed):
+        txt = f'{speed:.2f}' if speed % 1 else str(int(speed))
+        value = speed_font.render(txt, False, SNAKE_COLOR)
+        text_rect = value.get_rect()
+        text_rect.topleft = (10, 10)
+        display.blit(value, text_rect)
+
+    def draw_score(self, snake):
+        score = snake.length - 1
+        value = score_font.render(str(score), False, FONT_COLOR)
+        text_rect = value.get_rect()
+        text_rect.topright = (WIDTH - 10, 10)
+        display.blit(value, text_rect)
+
+    def draw_time(self):
+        seconds = int(time.monotonic() - self.start_time - self.paused_sum)
+        if seconds < 0:
+            seconds = 0
+        minutes = seconds // 60
+        seconds = seconds % 60
+        time_str = f'{minutes}:{seconds:02d}'
+        value = time_font.render(time_str, False, FONT_COLOR)
+        text_rect = value.get_rect(center=(WIDTH // 2, 10))
+        display.blit(value, text_rect)
+
+    def draw_overlay(self, color, alpha):
+        overlay_width, overlay_height = WIDTH // 2, HEIGHT // 4
+        overlay_x, overlay_y = (WIDTH - overlay_width) // 2, (HEIGHT - overlay_height) // 2
+        overlay = pygame.Surface((overlay_width, overlay_height))
+        overlay.set_alpha(alpha)
+        overlay.fill(color)
+        display.blit(overlay, (overlay_x, overlay_y))
 
 def main():
-    game_started = False
-    game_pause = False
-    game_over = False
-    game_quit = False
-    game_repeat = False
-    start_time = None
-    pause_time = 0
-    paused_sum = 0
-    key_hold_time = 0
+    game = Game()
     snake = Snake()
     food = Food(snake)
-    while not game_quit:
+    while not game.quit:
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 change_direction = False
@@ -178,82 +190,79 @@ def main():
                 elif event.key == pygame.K_s:
                     change_direction = snake.set_direction('down')
                 # On start
-                if change_direction and not game_started:
-                    start_time = time.monotonic()
-                    game_started = True
+                if change_direction and not game.started:
+                    game.start_time = time.monotonic()
+                    game.started = True
                 # Pause
                 if event.key == pygame.K_SPACE:
-                    game_pause = not game_pause
-                    if game_pause:
-                        pause_time = time.monotonic()
+                    game.pause = not game.pause
+                    if game.pause:
+                        game.pause_time = time.monotonic()
                     else:
-                        paused_sum += time.monotonic() - pause_time
+                        game.paused_sum += time.monotonic() - game.pause_time
             # Quit
             if event.type == pygame.QUIT:
-                game_quit = True
+                game.quit = True
                 break
         # Acceleration
         keys = pygame.key.get_pressed()
         if keys[pygame.K_a] and snake.way == 'left':
-            key_hold_time += 1
+            game.acceleration += 1
         elif keys[pygame.K_d] and snake.way == 'right':
-            key_hold_time += 1
+            game.acceleration += 1
         elif keys[pygame.K_w] and snake.way == 'up':
-            key_hold_time += 1
+            game.acceleration += 1
         elif keys[pygame.K_s] and snake.way == 'down':
-            key_hold_time += 1
+            game.acceleration += 1
         else:
-            key_hold_time = 0
-        if ACCELERATION_ENABLED and key_hold_time > 2:
+            game.acceleration = 0
+        if ACCELERATION_ENABLED and game.acceleration > 2:
             acceleration = ACCELERATION
         else:
             acceleration = 1
-        # Move
-        if not game_pause and not game_over:
+        if not game.pause and not game.over:
+            # Move
             if not snake.move():
-                game_over = True
-            dis.fill(BG_COLOR)
-            pygame.draw.rect(dis, FOOD_COLOR, [food.x, food.y, snake.size, snake.size])
-            snake.set_head(snake.x, snake.y)
-            if len(snake.body) > snake.length:
-                del snake.body[0]
-            snake.draw_snake()
-            draw_score(snake.length - 1)
-            draw_speed(snake.speed * acceleration)
-            if game_started:
-                draw_time(int(time.monotonic() - start_time - paused_sum))
-            # Acceleration
+                game.over = True
+            # Get score
             if snake.x == food.x and snake.y == food.y:
                 food = Food(snake)
                 snake.length += 1
                 if ACCELERATION_FOOD > 0 and (snake.length - 1) % ACCELERATION_FOOD == 0:
                     snake.speed += 1
+            display.fill(BG_COLOR)
+            game.draw_food(food)
+            game.draw_snake(snake)
+            game.draw_score(snake)
+            game.draw_speed(snake.speed * acceleration)
+            if game.started:
+                game.draw_time()
             pygame.display.update()
             clock.tick(snake.speed * acceleration)
 
-        if game_pause:
-            draw_overlay(BG_COLOR, 128)
-            draw_message("Paused\nPress Space to Continue", FONT_COLOR)
+        if game.pause:
+            game.draw_overlay(BG_COLOR, 128)
+            game.draw_message("Pause\nPress Space to Continue", FONT_COLOR)
             pygame.display.update()
 
-        if game_over:
-            draw_overlay(BG_COLOR, 128)
-            draw_message("GAME OVER\nScore: " + str(snake.length - 1) + "\nPress Q to Quit\nor R to Retry", FONT_COLOR)
+        if game.over:
+            game.draw_overlay(BG_COLOR, 128)
+            game.draw_message("GAME OVER\n\nPress Q to Quit\nor R to Retry", FONT_COLOR)
             pygame.display.update()
-            game_repeat = None
-            while game_repeat is None:
+            game.repeat = None
+            while game.repeat is None:
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
-                        game_repeat = False
-                        game_quit = True
+                        game.repeat = False
+                        game.quit = True
                     if event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_q:
-                            game_repeat = False
-                            game_quit = True
+                            game.repeat = False
+                            game.quit = True
                         if event.key == pygame.K_r:
-                            game_repeat = True
-                            game_quit = True
-    if game_repeat:
+                            game.repeat = True
+                            game.quit = True
+    if game.repeat:
         main()
     pygame.quit()
     quit()
