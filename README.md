@@ -2,6 +2,8 @@
 
 This is a simple implementation of the classic Snake game using Python and Pygame.
 
+![image](https://github.com/user-attachments/assets/30524c69-13cb-44ec-a400-f0144ee6be1f)
+
 ## About
 
 This project is special to me — it was my very first coding project, created back in 2013. At the time, I was working as a system administrator, and this little game was my entry point into the world of programming. I’ve kept it in my repositories as a reminder of where my coding journey began and how much I’ve grown since then.
