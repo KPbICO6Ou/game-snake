@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# app2.py
 import pygame
 import random
 import time
@@ -142,14 +141,14 @@ class Game:
 
     def draw_speed(self, speed):
         txt = f'{speed:.2f}' if speed % 1 else str(int(speed))
-        value = speed_font.render(txt, False, SNAKE_COLOR)
+        value = speed_font.render(txt, False, FONT_COLOR)
         text_rect = value.get_rect()
         text_rect.topleft = (10, 10)
         display.blit(value, text_rect)
 
     def draw_score(self, snake):
         score = snake.length - 1
-        value = score_font.render(str(score), False, FONT_COLOR)
+        value = score_font.render(str(score), False, SNAKE_COLOR) 
         text_rect = value.get_rect()
         text_rect.topright = (WIDTH - 10, 10)
         display.blit(value, text_rect)
@@ -246,6 +245,10 @@ def main():
             pygame.display.update()
 
         if game.over:
+            total_seconds = int(time.monotonic() - game.start_time - game.paused_sum)
+            minutes = total_seconds // 60
+            seconds = total_seconds % 60
+            print(f"Game over! Time: {minutes}:{seconds:02d}, Score: {snake.length - 1}")
             game.draw_overlay(BG_COLOR, 128)
             game.draw_message("GAME OVER\n\nPress Q to Quit\nor R to Retry", FONT_COLOR)
             pygame.display.update()
